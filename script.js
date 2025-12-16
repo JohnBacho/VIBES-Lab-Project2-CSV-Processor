@@ -1,64 +1,134 @@
 const fileInput = document.getElementById("csvFile");
-
 fileInput.addEventListener("change", function (e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
-
   reader.onload = function (event) {
     let text = event.target.result;
     let rows = text.split("\n").map((r) => r.split(","));
-    
-    // Remove empty rows
-    rows = rows.filter(row => row.some(cell => cell && cell.trim() !== ""));
-    
+    rows = rows.filter((row) => row.some((cell) => cell && cell.trim() !== ""));
     const headerRow = rows[0];
     console.log("Header row:", headerRow);
-    console.log("Looking for TrialNumber in:", headerRow.map(col => `"${col.trim()}"`));
-    
-    const trialNumberIndex = headerRow.findIndex(col => col.trim() === "TrialNumber");
-    
+
+    const trialNumberIndex = headerRow.findIndex(
+      (col) => col.trim() === "TrialNumber"
+    );
+    const gamblingTypeIndex = headerRow.findIndex(
+      (col) => col.trim() === "GamblingType"
+    );
+    const walletIndex = headerRow.findIndex((col) => col.trim() === "Wallet");
+    const phaseIndex = headerRow.findIndex((col) => col.trim() === "Phase");
+
     if (trialNumberIndex === -1) {
-      alert(`TrialNumber column not found! Found columns: ${headerRow.join(", ")}`);
+      alert(
+        `TrialNumber column not found! Found columns: ${headerRow.join(", ")}`
+      );
       return;
     }
-    
-    console.log(`TrialNumber found at index ${trialNumberIndex}`);
+    if (gamblingTypeIndex === -1) {
+      alert(
+        `GamblingType column not found! Found columns: ${headerRow.join(", ")}`
+      );
+      return;
+    }
+    if (walletIndex === -1) {
+      alert(`Wallet column not found! Found columns: ${headerRow.join(", ")}`);
+      return;
+    }
+    if (phaseIndex === -1) {
+      alert(`Phase column not found! Found columns: ${headerRow.join(", ")}`);
+      return;
+    }
 
-    // Find trial switch points (last row before trial number changes)
-    let summaryRows = [headerRow]; // Start with header
+    console.log(
+      `Columns found - Phase: ${phaseIndex}, TrialNumber: ${trialNumberIndex}, GamblingType: ${gamblingTypeIndex}, Wallet: ${walletIndex}`
+    );
+
+    let summaryRows = [headerRow];
+    let effortTaskSummaries = [];
+    let processedEffortTrials = new Set();
     let currentTrial = null;
     let lastRowOfTrial = null;
+    let firstWalletInTrial = null;
+    let maxWalletInTrial = null;
+    let currentPhase = null;
+    let currentGamblingType = null;
 
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const trialNum = row[trialNumberIndex];
-      
-      // Check if trial number changed
-      if (currentTrial !== null && trialNum !== currentTrial && lastRowOfTrial) {
-        // Add the last row of the previous trial to summary
-        summaryRows.push(lastRowOfTrial);
+      const gamblingType = row[gamblingTypeIndex]
+        ? row[gamblingTypeIndex].trim()
+        : "";
+      const walletValue = parseFloat(row[walletIndex]) || 0;
+      const phase = row[phaseIndex];
+
+      if (currentTrial !== trialNum) {
+        if (currentTrial !== null && currentGamblingType === "EffortTask") {
+          const trialKey = `${currentPhase}-${currentTrial}`;
+          if (!processedEffortTrials.has(trialKey)) {
+            const maxGained = maxWalletInTrial - firstWalletInTrial;
+            effortTaskSummaries.push({
+              phase: currentPhase,
+              trialNumber: currentTrial,
+              gamblingType: "EffortTask",
+              maxGained: maxGained.toFixed(0),
+            });
+            processedEffortTrials.add(trialKey);
+          }
+        } else if (
+          currentTrial !== null &&
+          lastRowOfTrial &&
+          currentGamblingType !== "EffortTask"
+        ) {
+          summaryRows.push(lastRowOfTrial);
+        }
+
+        currentTrial = trialNum;
+        currentPhase = phase;
+        currentGamblingType = gamblingType;
+        firstWalletInTrial = walletValue;
+        maxWalletInTrial = walletValue;
+      } else {
+        if (walletValue > maxWalletInTrial) {
+          maxWalletInTrial = walletValue;
+        }
       }
-      
-      // Update tracking variables
-      currentTrial = trialNum;
+
       lastRowOfTrial = row;
     }
-    
-    // Don't forget to add the last row of the final trial
-    if (lastRowOfTrial) {
+
+    if (currentTrial !== null && currentGamblingType === "EffortTask") {
+      const trialKey = `${currentPhase}-${currentTrial}`;
+      if (!processedEffortTrials.has(trialKey)) {
+        const maxGained = maxWalletInTrial - firstWalletInTrial;
+        effortTaskSummaries.push({
+          phase: currentPhase,
+          trialNumber: currentTrial,
+          gamblingType: "EffortTask",
+          maxGained: maxGained.toFixed(0),
+        });
+      }
+    } else if (lastRowOfTrial && currentGamblingType !== "EffortTask") {
       summaryRows.push(lastRowOfTrial);
     }
 
     console.log(`Found ${summaryRows.length - 1} trial transitions`);
+    console.log(`Found ${effortTaskSummaries.length} EffortTask trials`);
 
-    // Create CSV output
-    const csvContent = summaryRows.map((r) => r.join(",")).join("\n");
-    
+    let csvContent = summaryRows.map((r) => r.join(",")).join("\n");
+
+    if (effortTaskSummaries.length > 0) {
+      csvContent += "\n\n";
+      csvContent += "Phase,TrialNumber,GamblingType,Gained\n";
+      effortTaskSummaries.forEach((summary) => {
+        csvContent += `${summary.phase},${summary.trialNumber},${summary.gamblingType},${summary.maxGained}\n`;
+      });
+    }
+
     const programName = document
       .getElementById("Text")
       .value.replace(/\s+/g, "");
-    
     const blob = new Blob([csvContent], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -69,6 +139,5 @@ fileInput.addEventListener("change", function (e) {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
-  
   reader.readAsText(file);
 });
