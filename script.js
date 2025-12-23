@@ -1,3 +1,39 @@
+const Names = [
+  "Alexa",
+  "Lauren",
+  "Olivia",
+  "Marissa",
+  "Bert",
+  "Dr. Thomas",
+  "Jace",
+  "John",
+];
+const RandomName = Names[Math.floor(Math.random() * Names.length)];
+const Greetings = [
+  "Hi there",
+  "Time",
+  "Have a great day",
+  "What Up",
+  "Hello",
+  "Howdy",
+];
+let RandomGreetings = Greetings[Math.floor(Math.random() * Greetings.length)];
+const hour = new Date().getHours();
+if (hour >= 12 && hour < 18 && RandomGreetings === "Time") {
+  RandomGreetings = "Good Afternoon";
+} else if (hour >= 18 && hour < 24 && RandomGreetings === "Time") {
+  RandomGreetings = "Good Evening";
+} else if (hour >= 0 && hour < 12 && RandomGreetings === "Time") {
+  RandomGreetings = "Good Morning";
+}
+if (Math.random() < 0.05) {
+  document.getElementById("NameText").textContent = `What Up Twin!`;
+} else {
+  document.getElementById(
+    "NameText"
+  ).textContent = `${RandomGreetings} ${RandomName}!`;
+}
+
 const fileInput = document.getElementById("csvFile");
 fileInput.addEventListener("change", function (e) {
   const file = e.target.files[0];
