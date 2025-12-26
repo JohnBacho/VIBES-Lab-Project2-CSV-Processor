@@ -115,6 +115,8 @@ fileInput.addEventListener("change", function (e) {
       "CurrentBet",
       "CurrentPayout",
       "Wallet",
+      "Total_Odds",
+      "Total_Legs",
       "Parlay1_Team",
       "Parlay1_Odds",
       "Parlay2_Team",
@@ -125,7 +127,6 @@ fileInput.addEventListener("change", function (e) {
       "Parlay4_Odds",
       "Parlay5_Team",
       "Parlay5_Odds",
-      "Total_Odds",
     ];
 
     const headerIndexMap = {};
