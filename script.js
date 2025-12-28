@@ -25,7 +25,7 @@ const Greetings = [
   "Nice to see you 🌷",
 ];
 
-let index = 0;
+let index = Math.floor(Math.random() * Greetings.length);
 const nameText = document.getElementById("NameText");
 
 function updateGreeting() {
