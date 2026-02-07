@@ -73,6 +73,7 @@ fileInput.addEventListener("change", function (e) {
       "Wallet",
       "TrialAveragePupilSize",
       "TrialBaselineCorrectedPupilSize",
+      "EventBaselineCorrectedPupilSize",
       "Total_Odds",
       "Total_Legs",
       "Parlay1_Team",
