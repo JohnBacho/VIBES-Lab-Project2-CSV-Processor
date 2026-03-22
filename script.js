@@ -119,7 +119,7 @@ fileInput.addEventListener("change", function (e) {
       lastRowOfTrial = row;
     }
 
-    if (lastRowOfTrial && currentTrial != 16) {
+    if (lastRowOfTrial && currentTrial != 18) {
       summaryRows.push(
         KeepHeaders.map((h) => lastRowOfTrial[headerIndexMap[h]])
       );
