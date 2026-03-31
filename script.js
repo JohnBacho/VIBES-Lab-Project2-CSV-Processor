@@ -2,6 +2,12 @@ const fileInput = document.getElementById("csvFile");
 fileInput.addEventListener("change", function (e) {
   const file = e.target.files[0];
   if (!file) return;
+
+  // Get the manually entered program name (overrides CSV value if provided)
+  const manualProgramName = document
+    .getElementById("programNameInput")
+    .value.trim();
+
   const reader = new FileReader();
   reader.onload = function (event) {
     let text = event.target.result;
@@ -11,29 +17,28 @@ fileInput.addEventListener("change", function (e) {
     console.log("Header row:", headerRow);
 
     const trialNumberIndex = headerRow.findIndex(
-      (col) => col.trim() === "TrialNumber"
+      (col) => col.trim() === "TrialNumber",
     );
     const gamblingTypeIndex = headerRow.findIndex(
-      (col) => col.trim() === "GamblingType"
+      (col) => col.trim() === "GamblingType",
     );
     const programNameIndex = headerRow.findIndex(
-      (col) => col.trim() === "ProgramName"
+      (col) => col.trim() === "ProgramName",
     );
     const DateIndex = headerRow.findIndex((col) => col.trim() === "Date");
     const TimeIndex = headerRow.findIndex((col) => col.trim() === "LocalTime");
-
     const walletIndex = headerRow.findIndex((col) => col.trim() === "Wallet");
     const phaseIndex = headerRow.findIndex((col) => col.trim() === "Phase");
 
     if (trialNumberIndex === -1) {
       alert(
-        `TrialNumber column not found! Found columns: ${headerRow.join(", ")}`
+        `TrialNumber column not found! Found columns: ${headerRow.join(", ")}`,
       );
       return;
     }
     if (gamblingTypeIndex === -1) {
       alert(
-        `GamblingType column not found! Found columns: ${headerRow.join(", ")}`
+        `GamblingType column not found! Found columns: ${headerRow.join(", ")}`,
       );
       return;
     }
@@ -47,7 +52,7 @@ fileInput.addEventListener("change", function (e) {
     }
 
     console.log(
-      `Columns found - Phase: ${phaseIndex}, TrialNumber: ${trialNumberIndex}, GamblingType: ${gamblingTypeIndex}, Wallet: ${walletIndex}`
+      `Columns found - Phase: ${phaseIndex}, TrialNumber: ${trialNumberIndex}, GamblingType: ${gamblingTypeIndex}, Wallet: ${walletIndex}`,
     );
 
     const KeepHeaders = [
@@ -66,16 +71,13 @@ fileInput.addEventListener("change", function (e) {
       "EventBaselineCorrectedPupilSize",
       "Total_Odds",
       "Total_Legs",
-      "Parlay1_Team",
-      "Parlay1_Odds",
-      "Parlay2_Team",
-      "Parlay2_Odds",
-      "Parlay3_Team",
-      "Parlay3_Odds",
-      "Parlay4_Team",
-      "Parlay4_Odds",
-      "Parlay5_Team",
-      "Parlay5_Odds",
+    ];
+
+    const allOutputHeaders = [
+      ...KeepHeaders,
+      "Gender",
+      "PGSI Score",
+      "Program",
     ];
 
     const headerIndexMap = {};
@@ -83,11 +85,10 @@ fileInput.addEventListener("change", function (e) {
       headerIndexMap[col.trim()] = i;
     });
 
-    let summaryRows = [KeepHeaders];
+    let summaryDataRows = [];
 
     let currentTrial = null;
     let lastRowOfTrial = null;
-    let currentGamblingType = null;
     let programNameFromCSV = "";
     let Date = "";
     let Time = "";
@@ -95,11 +96,8 @@ fileInput.addEventListener("change", function (e) {
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
       const trialNum = row[trialNumberIndex];
-      const gamblingType = row[gamblingTypeIndex]
-        ? row[gamblingTypeIndex].trim()
-        : "";
 
-      if (!programNameFromCSV) {
+      if (!programNameFromCSV && programNameIndex !== -1) {
         programNameFromCSV = row[programNameIndex];
         Date = row[DateIndex];
         Time = row[TimeIndex];
@@ -107,46 +105,59 @@ fileInput.addEventListener("change", function (e) {
 
       if (currentTrial !== trialNum) {
         if (currentTrial !== null && lastRowOfTrial) {
-          summaryRows.push(
-            KeepHeaders.map((h) => lastRowOfTrial[headerIndexMap[h]])
-          );
+          summaryDataRows.push(lastRowOfTrial);
         }
-
         currentTrial = trialNum;
-        currentGamblingType = gamblingType;
       }
 
       lastRowOfTrial = row;
     }
 
     if (lastRowOfTrial && currentTrial != 18) {
-      summaryRows.push(
-        KeepHeaders.map((h) => lastRowOfTrial[headerIndexMap[h]])
-      );
+      summaryDataRows.push(lastRowOfTrial);
     }
 
-    console.log(`Found ${summaryRows.length - 1} total trials`);
+    console.log(`Found ${summaryDataRows.length} total trials`);
+    const finalProgramName =
+      manualProgramName || programNameFromCSV || "Program";
+    const wsData = [allOutputHeaders];
 
-    const csvContent = summaryRows.map((r) => r.join(",")).join("\n");
+    summaryDataRows.forEach((row, rowIdx) => {
+      const excelRowNum = rowIdx + 2;
+      const dataRow = KeepHeaders.map((h) => {
+        const val = row[headerIndexMap[h]];
+        return val !== undefined ? val.trim() : "";
+      });
 
-    const [hourStr, minuteStr] = Time.split("_");
-    const hour24 = parseInt(hourStr, 10);
-    const period = hour24 >= 12 ? "PM" : "AM";
-    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
-    Date = Date.replaceAll("_", "-");
-    const americanTime = `${hour12}-${minuteStr}${period}`;
+      const genderFormula = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!W:W)`;
+ 
+      const pgsiScore = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!X:X)`;
 
-    const blob = new Blob([csvContent], { type: "text/csv" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `${
-      programNameFromCSV || "Program"
-    }_${Date}_${americanTime}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+      const programValue = finalProgramName;
+
+      dataRow.push(genderFormula, pgsiScore, programValue);
+      wsData.push(dataRow);
+    });
+
+    let formattedDate = Date ? Date.replaceAll("_", "-") : "date";
+    let americanTime = "time";
+    if (Time) {
+      const [hourStr, minuteStr] = Time.split("_");
+      if (hourStr && minuteStr) {
+        const hour24 = parseInt(hourStr, 10);
+        const period = hour24 >= 12 ? "PM" : "AM";
+        const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12;
+        americanTime = `${hour12}-${minuteStr}${period}`;
+      }
+    }
+    const fileName = `${finalProgramName}_${formattedDate}_${americanTime}.xlsx`;
+
+    const wb = XLSX.utils.book_new();
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+    XLSX.writeFile(wb, fileName);
   };
   reader.readAsText(file);
 });
