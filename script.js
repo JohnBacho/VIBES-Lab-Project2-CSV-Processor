@@ -3,7 +3,6 @@ fileInput.addEventListener("change", function (e) {
   const file = e.target.files[0];
   if (!file) return;
 
-  // Get the manually entered program name (overrides CSV value if provided)
   const manualProgramName = document
     .getElementById("programNameInput")
     .value.trim();
@@ -118,6 +117,7 @@ fileInput.addEventListener("change", function (e) {
     }
 
     console.log(`Found ${summaryDataRows.length} total trials`);
+
     const finalProgramName =
       manualProgramName || programNameFromCSV || "Program";
     const wsData = [allOutputHeaders];
@@ -126,11 +126,25 @@ fileInput.addEventListener("change", function (e) {
       const excelRowNum = rowIdx + 2;
       const dataRow = KeepHeaders.map((h) => {
         const val = row[headerIndexMap[h]];
-        return val !== undefined ? val.trim() : "";
+        if (val === undefined || val === null) return "";
+        const trimmed = val.trim();
+        if (trimmed === "") return "";
+
+        if (h === "HardEffortTask") {
+          const lower = trimmed.toLowerCase();
+          if (lower === "true" || lower === "1") return true;
+          if (lower === "false" || lower === "0") return false;
+          return trimmed;
+        }
+
+        if (["GamblingType", "Outcome"].includes(h)) return trimmed;
+
+        const num = Number(trimmed);
+        return !isNaN(num) ? num : trimmed;
       });
 
       const genderFormula = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!W:W)`;
- 
+
       const pgsiScore = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!X:X)`;
 
       const programValue = finalProgramName;
