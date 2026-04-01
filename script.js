@@ -77,6 +77,7 @@ fileInput.addEventListener("change", function (e) {
       "Gender",
       "PGSI Score",
       "Program",
+      "Athlete",
     ];
 
     const headerIndexMap = {};
@@ -145,11 +146,13 @@ fileInput.addEventListener("change", function (e) {
 
       const genderFormula = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!W:W)`;
 
-      const pgsiScore = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!X:X)`;
+      const pgsiScore = `=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!Y:Y)`;
+
+      const Athlete = '=XLOOKUP(INDIRECT("R"&ROW()),PGSI!B:B,PGSI!F:F)';
 
       const programValue = finalProgramName;
 
-      dataRow.push(genderFormula, pgsiScore, programValue);
+      dataRow.push(genderFormula, pgsiScore, programValue, Athlete);
       wsData.push(dataRow);
     });
 
